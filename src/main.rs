@@ -84,12 +84,31 @@ fn main() -> Result<()> {
     let versions = detect_versions_recursive(&project_path)?;
     
     println!("Detected/Inferred Versions:");
+    // Store the default values in variables to avoid repeated allocation
+    let unknown = "Unknown".to_string();
+    let unknown_anchor = "Unknown (may not be an Anchor project)".to_string();
+
+    // Print detected versions
     println!("Rust: {} {}", 
-        versions.rust_version.unwrap_or_else(|| "Unknown".to_string()),
+        versions.rust_version.as_ref().unwrap_or(&unknown),
         versions.source.as_ref().map(|p| format!("(from {})", p.display())).unwrap_or_default()
     );
-    println!("Solana: {}", versions.solana_version.unwrap_or_else(|| "Unknown".to_string()));
-    println!("Anchor: {}", versions.anchor_version.unwrap_or_else(|| "Unknown (may not be an Anchor project)".to_string()));
+    println!("Solana: {}", versions.solana_version.as_ref().unwrap_or(&unknown));
+    println!("Anchor: {}", versions.anchor_version.as_ref().unwrap_or(&unknown_anchor));
+    
+    // Print configuration instructions
+    println!("\nTo work with this project, configure your environment as follows:");
+    println!("```");
+    if let Some(ref toolchain) = versions.rust_version {
+        println!("rustup default {}", toolchain);
+    }
+    if let Some(ref solana) = versions.solana_version {
+        println!("solana-install init {}", solana);
+    }
+    if let Some(ref anchor) = versions.anchor_version {
+        println!("avm use {}", anchor);
+    }
+    println!("```");
 
     Ok(())
 }
