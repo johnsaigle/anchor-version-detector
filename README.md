@@ -86,3 +86,9 @@ anchor-lang = { version = "0.29.0" }
   }
 }
 ```
+
+## TODO
+
+- Split into multiple files (different ones for different kinds of parsing)
+- Add clippy lints
+- Reduce dependencies
