@@ -62,17 +62,6 @@ struct ToolchainConfig {
     solana: Option<String>,
 }
 
-#[derive(Deserialize)]
-struct PackageJson { dependencies: Option<DependenciesJson>, }
-
-#[derive(Deserialize)]
-struct DependenciesJson {
-    #[serde(rename = "@solana/web3.js")]
-    solana_web3: Option<String>,
-    #[serde(rename = "@project-serum/anchor")]
-    anchor: Option<String>,
-}
-
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
@@ -227,13 +216,11 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
     // Check Anchor.toml
     let anchor_toml_path = project_path.join("Anchor.toml");
     if anchor_toml_path.exists() {
-        println!("Checking {}", anchor_toml_path.display());
         let content = fs::read_to_string(&anchor_toml_path)?;
         
         // Try parsing with our structured approach first
         match toml::from_str::<AnchorToml>(&content) {
             Ok(config) => {
-                println!("Successfully parsed Anchor.toml");
                 if let Some(toolchain) = config.toolchain {
                     // Handle solana version
                     if let Some(solana_ver) = toolchain.solana {
@@ -254,7 +241,6 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
                         if versions.solana_version.is_none() {
                             if let Some(solana_ver) = toolchain.get("solana_version").and_then(|v| v.as_str()) {
                                 versions.solana_version = Some(solana_ver.to_string());
-                                println!("Found solana version (fallback): {}", solana_ver);
                             }
                         }
                         
@@ -262,7 +248,6 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
                         if versions.anchor_version.is_none() {
                             if let Some(anchor_ver) = toolchain.get("anchor_version").and_then(|v| v.as_str()) {
                                 versions.anchor_version = Some(anchor_ver.to_string());
-                                println!("Found anchor version (fallback): {}", anchor_ver);
                             }
                         }
                     }
@@ -314,23 +299,6 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
         }
     }
 
-    // Check package.json
-    let package_json_path = project_path.join("package.json");
-    if package_json_path.exists() {
-        let content = fs::read_to_string(&package_json_path)?;
-        if let Ok(config) = serde_json::from_str::<PackageJson>(&content) {
-            if let Some(deps) = config.dependencies {
-                if versions.solana_version.is_none() {
-                    versions.solana_version = deps.solana_web3;
-                }
-                if versions.anchor_version.is_none() {
-                    versions.anchor_version = deps.anchor;
-                }
-            }
-        }
-    }
-
-
     Ok(versions)
 }
 
@@ -346,74 +314,6 @@ fn extract_version_from_toml_value(value: Option<&toml::Value>) -> Option<String
         None => None,
     }
 }
-
-// fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
-//     let mut versions = ProjectVersions {
-//         rust_version: None,
-//         solana_version: None,
-//         anchor_version: None,
-//     };
-//
-//     // Check rust-toolchain file
-//     let rust_toolchain_path = project_path.join("rust-toolchain");
-//     if rust_toolchain_path.exists() {
-//         let content = fs::read_to_string(&rust_toolchain_path)?;
-//         versions.rust_version = match parse_rust_toolchain(&content) {
-//             Ok(version) => Some(version),
-//             // Return the string as-is if parsing fails
-//             Err(_) => Some(content.trim().to_string())
-//         };
-//     }
-//
-//     // Check Anchor.toml
-//     let anchor_toml_path = project_path.join("Anchor.toml");
-//     if anchor_toml_path.exists() {
-//         let content = fs::read_to_string(&anchor_toml_path)?;
-//         if let Ok(config) = toml::from_str::<AnchorToml>(&content) {
-//             if let Some(toolchain) = config.toolchain {
-//                 versions.solana_version = toolchain.solana;
-//                 versions.anchor_version = toolchain.anchor;
-//             }
-//         }
-//     }
-//
-//     // Check Cargo.toml
-//     let cargo_toml_path = project_path.join("Cargo.toml");
-//     if cargo_toml_path.exists() {
-//         let content = fs::read_to_string(&cargo_toml_path)?;
-//         if let Ok(config) = toml::from_str::<CargoToml>(&content) {
-//             if let Some(deps) = config.dependencies {
-//                 if versions.solana_version.is_none() {
-//                     versions.solana_version = deps.solana_program;
-//                 }
-//                 if versions.anchor_version.is_none() {
-//                     versions.anchor_version = deps.anchor_lang;
-//                 }
-//             }
-//         }
-//     }
-//
-//     // Check package.json
-//     let package_json_path = project_path.join("package.json");
-//     if package_json_path.exists() {
-//         let content = fs::read_to_string(&package_json_path)?;
-//         if let Ok(config) = serde_json::from_str::<PackageJson>(&content) {
-//             if let Some(deps) = config.dependencies {
-//                 if versions.solana_version.is_none() {
-//                     versions.solana_version = deps.solana_web3;
-//                 }
-//                 if versions.anchor_version.is_none() {
-//                     versions.anchor_version = deps.anchor;
-//                 }
-//             }
-//         }
-//     }
-//
-//     // Infer versions if not found
-//     infer_missing_versions(&mut versions)?;
-//
-//     Ok(versions)
-// }
 
 fn parse_rust_toolchain(content: &str) -> Result<String> {
     // First try parsing as TOML
@@ -436,12 +336,11 @@ fn parse_rust_toolchain(content: &str) -> Result<String> {
 fn infer_missing_versions(versions: &mut ProjectVersions) -> Result<()> {
     // Known version compatibility matrix
     let compatibility_rules = vec![
-        // TODO update
         // (Solana, Anchor, Rust) - Newest to oldest
-        ("1.17.0", "0.30.1", "1.69.0"),
-        ("1.17.0", "0.30.0", "1.69.0"),
-        ("1.17.0", "0.29.0", "1.69.0"),
-        ("1.16.0", "0.28.0", "1.68.0"),
+        ("1.18.17", "0.30.1", "1.76.0"), // based on rust-toolchain in main solana repo and https://www.anchor-lang.com/release-notes/0.30.1
+        ("1.18.8", "0.30.0", "1.76.0"), // based on rust-toolchain in main solana repo and https://www.anchor-lang.com/release-notes/0.30.0
+        ("1.17.0", "0.29.0", "1.69.0"), // listed in https://www.anchor-lang.com/release-notes/0.29.0
+        ("1.16.0", "0.28.0", "1.68.0"), // https://www.anchor-lang.com/release-notes/changelog#0-28-0-2023-06-09
         ("1.15.0", "0.27.0", "1.67.0"),
         ("1.14.0", "0.26.0", "1.66.0"),
     ];
