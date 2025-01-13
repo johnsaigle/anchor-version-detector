@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "anchor-guesser"
+name = "anchor-version-detector"
 version = "0.1.0"
 dependencies = [
  "anyhow",
