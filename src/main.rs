@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
-use std::fs;
+use anyhow::{anyhow, Result};
 use serde::Deserialize;
-use anyhow::{Result, anyhow};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Deserialize)]
 struct RustToolchain {
@@ -71,20 +71,31 @@ fn main() -> Result<()> {
 
     let project_path = PathBuf::from(&args[1]);
     let versions = detect_versions_recursive(&project_path)?;
-    
+
     println!("Detected/Inferred Versions:");
     // Store the default values in variables to avoid repeated allocation
     let unknown = "Unknown".to_string();
     let unknown_anchor = "Unknown (may not be an Anchor project)".to_string();
 
     // Print detected versions
-    println!("Rust: {} {}", 
+    println!(
+        "Rust: {} {}",
         versions.rust_version.as_ref().unwrap_or(&unknown),
-        versions.source.as_ref().map(|p| format!("(from {})", p.display())).unwrap_or_default()
+        versions
+            .source
+            .as_ref()
+            .map(|p| format!("(from {})", p.display()))
+            .unwrap_or_default()
     );
-    println!("Solana: {}", versions.solana_version.as_ref().unwrap_or(&unknown));
-    println!("Anchor: {}", versions.anchor_version.as_ref().unwrap_or(&unknown_anchor));
-    
+    println!(
+        "Solana: {}",
+        versions.solana_version.as_ref().unwrap_or(&unknown)
+    );
+    println!(
+        "Anchor: {}",
+        versions.anchor_version.as_ref().unwrap_or(&unknown_anchor)
+    );
+
     // Print configuration instructions
     println!("\nTo work with this project, configure your environment as follows:");
     println!("```");
@@ -105,7 +116,7 @@ fn main() -> Result<()> {
 fn detect_versions_recursive(project_path: &Path) -> Result<ProjectVersions> {
     // First try to detect versions in the current directory
     let mut versions = detect_versions(project_path)?;
-    
+
     // If we couldn't determine all versions, search subdirectories recursively
     if versions.needs_more_info() {
         search_subdirectories(project_path, &mut versions)?;
@@ -119,9 +130,9 @@ fn detect_versions_recursive(project_path: &Path) -> Result<ProjectVersions> {
 
 impl ProjectVersions {
     fn needs_more_info(&self) -> bool {
-        self.rust_version.is_none() || 
-        self.solana_version.is_none() ||
-        self.anchor_version.is_none()
+        self.rust_version.is_none()
+            || self.solana_version.is_none()
+            || self.anchor_version.is_none()
     }
 
     fn update_from(&mut self, other: &ProjectVersions) {
@@ -129,9 +140,10 @@ impl ProjectVersions {
             self.rust_version = other.rust_version.clone();
             self.source = other.source.clone();
         }
-        if self.solana_version.is_none() 
+        if self.solana_version.is_none()
             && other.solana_version.is_some()
-            && other.solana_version.as_ref().map_or(true, |v| v != "*") {
+            && other.solana_version.as_ref().map_or(true, |v| v != "*")
+        {
             self.solana_version = other.solana_version.clone();
         }
         if self.anchor_version.is_none() && other.anchor_version.is_some() {
@@ -146,10 +158,8 @@ fn search_subdirectories(dir: &Path, versions: &mut ProjectVersions) -> Result<(
             let path = entry.path();
             if path.is_dir() {
                 // Skip common directories that wouldn't contain relevant files
-                let dir_name = path.file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("");
-                
+                let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
                 if should_skip_directory(dir_name) {
                     continue;
                 }
@@ -202,14 +212,18 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
         source: None,
     };
 
-
-    // Check rust-toolchain file
-    let rust_toolchain_path = project_path.join("rust-toolchain");
-    if rust_toolchain_path.exists() {
-        let content = fs::read_to_string(&rust_toolchain_path)?;
-        if let Ok(version) = parse_rust_toolchain(&content) {
-            versions.rust_version = Some(version);
-            versions.source = Some(rust_toolchain_path);
+    // Check for a rust-toolchain file.
+    let files = vec!["rust-toolchain", "rust-toolchain.toml"];
+    let paths = files.iter().map(|f| project_path.join(f));
+    for f in paths {
+        if f.exists() {
+            let content = fs::read_to_string(&f)?;
+            if let Ok(version) = parse_rust_toolchain(&content) {
+                versions.rust_version = Some(version);
+                versions.source = Some(f);
+            }
+            // Stop on the first file if there are more for some reason
+            break;
         }
     }
 
@@ -217,7 +231,7 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
     let anchor_toml_path = project_path.join("Anchor.toml");
     if anchor_toml_path.exists() {
         let content = fs::read_to_string(&anchor_toml_path)?;
-        
+
         // Try parsing with our structured approach first
         match toml::from_str::<AnchorToml>(&content) {
             Ok(config) => {
@@ -226,7 +240,7 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
                     if let Some(solana_ver) = toolchain.solana {
                         versions.solana_version = Some(solana_ver);
                     }
-                    
+
                     // Handle anchor version
                     if let Some(anchor_ver) = toolchain.anchor {
                         versions.anchor_version = Some(anchor_ver);
@@ -239,14 +253,18 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
                     if let Some(toolchain) = value.get("toolchain").and_then(|t| t.as_table()) {
                         // Try to get solana version
                         if versions.solana_version.is_none() {
-                            if let Some(solana_ver) = toolchain.get("solana_version").and_then(|v| v.as_str()) {
+                            if let Some(solana_ver) =
+                                toolchain.get("solana_version").and_then(|v| v.as_str())
+                            {
                                 versions.solana_version = Some(solana_ver.to_string());
                             }
                         }
-                        
+
                         // Try to get anchor version
                         if versions.anchor_version.is_none() {
-                            if let Some(anchor_ver) = toolchain.get("anchor_version").and_then(|v| v.as_str()) {
+                            if let Some(anchor_ver) =
+                                toolchain.get("anchor_version").and_then(|v| v.as_str())
+                            {
                                 versions.anchor_version = Some(anchor_ver.to_string());
                             }
                         }
@@ -255,12 +273,12 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
             }
         }
     }
-    
+
     // Check Cargo.toml
     let cargo_toml_path = project_path.join("Cargo.toml");
     if cargo_toml_path.exists() {
         let content = fs::read_to_string(&cargo_toml_path)?;
-        
+
         // First try parsing with our structured approach
         match toml::from_str::<CargoToml>(&content) {
             Ok(config) => {
@@ -271,7 +289,7 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
                             versions.solana_version = get_version_from_spec(&solana_spec);
                         }
                     }
-                    
+
                     // Handle anchor-lang
                     if let Some(anchor_spec) = deps.anchor_lang {
                         if versions.anchor_version.is_none() {
@@ -286,12 +304,14 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
                     if let Some(deps) = value.get("dependencies").and_then(|d| d.as_table()) {
                         // Try to get solana-program version
                         if versions.solana_version.is_none() {
-                            versions.solana_version = extract_version_from_toml_value(deps.get("solana-program"));
+                            versions.solana_version =
+                                extract_version_from_toml_value(deps.get("solana-program"));
                         }
-                        
+
                         // Try to get anchor-lang version
                         if versions.anchor_version.is_none() {
-                            versions.anchor_version = extract_version_from_toml_value(deps.get("anchor-lang"));
+                            versions.anchor_version =
+                                extract_version_from_toml_value(deps.get("anchor-lang"));
                         }
                     }
                 }
@@ -304,13 +324,11 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
 
 fn extract_version_from_toml_value(value: Option<&toml::Value>) -> Option<String> {
     match value {
-        Some(v) => {
-            match v {
-                toml::Value::String(s) => Some(s.clone()),
-                toml::Value::Table(t) => t.get("version").and_then(|v| v.as_str()).map(String::from),
-                _ => None,
-            }
-        }
+        Some(v) => match v {
+            toml::Value::String(s) => Some(s.clone()),
+            toml::Value::Table(t) => t.get("version").and_then(|v| v.as_str()).map(String::from),
+            _ => None,
+        },
         None => None,
     }
 }
@@ -320,10 +338,10 @@ fn parse_rust_toolchain(content: &str) -> Result<String> {
     if let Ok(toolchain) = toml::from_str::<RustToolchain>(content) {
         return Ok(toolchain.toolchain.channel);
     }
-    
+
     // If TOML parsing fails, try parsing as plain version string
     let version = content.trim();
-    
+
     // Basic validation - check if it looks like a version number
     // This covers formats like "1.69.0" and "nightly-2023-04-01"
     if version.chars().any(|c| c.is_numeric()) {
@@ -344,7 +362,7 @@ fn infer_missing_versions(versions: &mut ProjectVersions) -> Result<()> {
         ("1.15.0", "0.27.0", "1.67.0"),
         ("1.14.0", "0.26.0", "1.66.0"),
     ];
-    
+
     // If Anchor is the only one missing, maybe this isn't an anchor project
     // match versions {
     //     Some(_), Some(_), None, Some(_) => return versions,
@@ -384,7 +402,8 @@ fn infer_missing_versions(versions: &mut ProjectVersions) -> Result<()> {
 
     // If still missing versions, use latest known compatible versions
     if versions.solana_version.is_none()
-    || versions.solana_version.as_ref().map_or(true, |v| v == "*") {
+        || versions.solana_version.as_ref().map_or(true, |v| v == "*")
+    {
         println!("Solana version could not be determined. Suggesting latest.");
         versions.solana_version = Some(compatibility_rules[0].0.to_string());
     }
@@ -401,7 +420,8 @@ fn infer_missing_versions(versions: &mut ProjectVersions) -> Result<()> {
 }
 
 fn clean_version(version: &str) -> String {
-    version.trim_start_matches('^')
+    version
+        .trim_start_matches('^')
         .trim_start_matches('~')
         .trim_start_matches('=')
         .trim_start_matches("v")
