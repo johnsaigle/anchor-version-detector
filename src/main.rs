@@ -103,7 +103,7 @@ fn main() -> Result<()> {
         println!("rustup default {}", toolchain);
     }
     if let Some(ref solana) = versions.solana_version {
-        println!("solana-install init {}", solana);
+        println!("agave-install init {}", solana);
     }
     if let Some(ref anchor) = versions.anchor_version {
         println!("avm use {}", anchor);

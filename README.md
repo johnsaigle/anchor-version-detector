@@ -8,7 +8,7 @@ A command-line tool that analyzes Solana/Anchor projects to detect or infer requ
   - `rust-toolchain` for Rust version
   - `Anchor.toml` for Solana and Anchor versions
   - `Cargo.toml` for Solana and Anchor dependencies
-- Prints commands to make local environment compatible (solana-install, avm, rustup)
+- Prints commands to make local environment compatible (agave-install, avm, rustup)
 - Recursively searches subdirectories if versions aren't found in the root
 - Intelligently infers missing versions based on compatibility rules
 - Skips irrelevant directories (node_modules, target, etc.)
@@ -32,7 +32,7 @@ Anchor: 0.29.0
 
 To work with this project, configure your environment as follows:
 rustup default nightly-2023-10-29
-solana-install init 1.18.10
+agave-install init 1.18.10
 avm use 0.29.0
 ```
 
