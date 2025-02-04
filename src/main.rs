@@ -213,7 +213,7 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
     };
 
     // Check for a rust-toolchain file.
-    let files = vec!["rust-toolchain", "rust-toolchain.toml"];
+    let files = ["rust-toolchain", "rust-toolchain.toml"];
     let paths = files.iter().map(|f| project_path.join(f));
     for f in paths {
         if f.exists() {
@@ -424,6 +424,6 @@ fn clean_version(version: &str) -> String {
         .trim_start_matches('^')
         .trim_start_matches('~')
         .trim_start_matches('=')
-        .trim_start_matches("v")
+        .trim_start_matches('v')
         .to_string()
 }
