@@ -20,3 +20,8 @@ lto = "fat"
 opt-level = 3
 strip = "debuginfo"
 incremental = true
+
+[lints.clippy]
+# ==== Security-related clippy lints
+arithmetic_side_effects = "warn"
+as_conversions = "warn"
