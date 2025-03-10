@@ -355,6 +355,7 @@ fn infer_missing_versions(versions: &mut ProjectVersions) -> Result<()> {
     // Known version compatibility matrix
     let compatibility_rules = vec![
         // (Solana, Anchor, Rust) - Newest to oldest
+        ("2.1.0", "0.31.0", "1.84.1"), // based on rust-toolchain in main agave repo and https://www.anchor-lang.com/release-notes/0.31.0
         ("1.18.17", "0.30.1", "1.76.0"), // based on rust-toolchain in main solana repo and https://www.anchor-lang.com/release-notes/0.30.1
         ("1.18.8", "0.30.0", "1.76.0"), // based on rust-toolchain in main solana repo and https://www.anchor-lang.com/release-notes/0.30.0
         ("1.17.0", "0.29.0", "1.69.0"), // listed in https://www.anchor-lang.com/release-notes/0.29.0
