@@ -2,6 +2,8 @@
 
 A command-line tool that analyzes Solana/Anchor projects to detect or infer required versions of Rust, Solana, and Anchor.
 
+_Disclaimer: This code is neither tested nor secure._
+
 ## Features
 
 - Detects versions from multiple configuration files:
