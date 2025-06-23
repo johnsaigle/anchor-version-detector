@@ -24,6 +24,12 @@ struct ProjectVersions {
 #[derive(Debug, Deserialize)]
 struct CargoToml {
     dependencies: Option<Dependencies>,
+    workspace: Option<Workspace>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Workspace {
+    dependencies: Option<Dependencies>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -47,6 +53,8 @@ struct Dependencies {
     solana_program: Option<DependencySpec>,
     #[serde(rename = "anchor-lang")]
     anchor_lang: Option<DependencySpec>,
+    #[serde(rename = "anchor-spl")]
+    anchor_spl: Option<DependencySpec>,
 }
 
 #[derive(Deserialize)]
@@ -282,18 +290,52 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
         // First try parsing with our structured approach
         match toml::from_str::<CargoToml>(&content) {
             Ok(config) => {
-                if let Some(deps) = config.dependencies {
+                // Check regular dependencies first
+                if let Some(deps) = &config.dependencies {
                     // Handle solana-program
-                    if let Some(solana_spec) = deps.solana_program {
+                    if let Some(solana_spec) = &deps.solana_program {
                         if versions.solana_version.is_none() {
-                            versions.solana_version = get_version_from_spec(&solana_spec);
+                            versions.solana_version = get_version_from_spec(solana_spec);
                         }
                     }
 
                     // Handle anchor-lang
-                    if let Some(anchor_spec) = deps.anchor_lang {
+                    if let Some(anchor_spec) = &deps.anchor_lang {
                         if versions.anchor_version.is_none() {
-                            versions.anchor_version = get_version_from_spec(&anchor_spec);
+                            versions.anchor_version = get_version_from_spec(anchor_spec);
+                        }
+                    }
+
+                    // Handle anchor-spl as fallback for anchor version
+                    if versions.anchor_version.is_none() {
+                        if let Some(anchor_spl_spec) = &deps.anchor_spl {
+                            versions.anchor_version = get_version_from_spec(anchor_spl_spec);
+                        }
+                    }
+                }
+
+                // Check workspace dependencies if versions not found in regular dependencies
+                if let Some(workspace) = &config.workspace {
+                    if let Some(workspace_deps) = &workspace.dependencies {
+                        // Handle solana-program from workspace
+                        if versions.solana_version.is_none() {
+                            if let Some(solana_spec) = &workspace_deps.solana_program {
+                                versions.solana_version = get_version_from_spec(solana_spec);
+                            }
+                        }
+
+                        // Handle anchor-lang from workspace
+                        if versions.anchor_version.is_none() {
+                            if let Some(anchor_spec) = &workspace_deps.anchor_lang {
+                                versions.anchor_version = get_version_from_spec(anchor_spec);
+                            }
+                        }
+
+                        // Handle anchor-spl from workspace as fallback
+                        if versions.anchor_version.is_none() {
+                            if let Some(anchor_spl_spec) = &workspace_deps.anchor_spl {
+                                versions.anchor_version = get_version_from_spec(anchor_spl_spec);
+                            }
                         }
                     }
                 }
@@ -301,6 +343,7 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
             Err(_) => {
                 // Fallback to parsing as generic TOML
                 if let Ok(value) = toml::from_str::<toml::Value>(&content) {
+                    // Check regular dependencies first
                     if let Some(deps) = value.get("dependencies").and_then(|d| d.as_table()) {
                         // Try to get solana-program version
                         if versions.solana_version.is_none() {
@@ -312,6 +355,35 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
                         if versions.anchor_version.is_none() {
                             versions.anchor_version =
                                 extract_version_from_toml_value(deps.get("anchor-lang"));
+                        }
+
+                        // Try to get anchor-spl version as fallback
+                        if versions.anchor_version.is_none() {
+                            versions.anchor_version =
+                                extract_version_from_toml_value(deps.get("anchor-spl"));
+                        }
+                    }
+
+                    // Check workspace dependencies if versions not found
+                    if let Some(workspace) = value.get("workspace").and_then(|w| w.as_table()) {
+                        if let Some(workspace_deps) = workspace.get("dependencies").and_then(|d| d.as_table()) {
+                            // Try to get solana-program version from workspace
+                            if versions.solana_version.is_none() {
+                                versions.solana_version =
+                                    extract_version_from_toml_value(workspace_deps.get("solana-program"));
+                            }
+
+                            // Try to get anchor-lang version from workspace
+                            if versions.anchor_version.is_none() {
+                                versions.anchor_version =
+                                    extract_version_from_toml_value(workspace_deps.get("anchor-lang"));
+                            }
+
+                            // Try to get anchor-spl version from workspace as fallback
+                            if versions.anchor_version.is_none() {
+                                versions.anchor_version =
+                                    extract_version_from_toml_value(workspace_deps.get("anchor-spl"));
+                            }
                         }
                     }
                 }
