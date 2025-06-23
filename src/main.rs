@@ -32,6 +32,15 @@ const SKIP_DIRECTORIES: &[&str] = &[
     "coverage",
 ];
 
+/// Expected number of command line arguments (program name + project directory)
+const EXPECTED_ARGS_COUNT: usize = 2;
+/// Maximum file size for rust-toolchain files (10KB)
+const MAX_RUST_TOOLCHAIN_FILE_SIZE: usize = 10_000;
+/// Maximum file size for TOML configuration files (100KB)
+const MAX_TOML_FILE_SIZE: usize = 100_000;
+/// Index of the latest compatibility rule (first entry in the array)
+const LATEST_COMPATIBILITY_INDEX: usize = 0;
+
 /// Represents the structure of a `rust-toolchain.toml` file
 #[derive(Deserialize)]
 struct RustToolchain {
@@ -117,7 +126,7 @@ struct ToolchainConfig {
 /// Main entry point for the anchor version detector
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 2 {
+    if args.len() != EXPECTED_ARGS_COUNT {
         println!("Usage: {} <project_directory>", args[0]);
         return Ok(());
     }
@@ -349,7 +358,7 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
                 .map_err(|e| anyhow!("Failed to read {}: {}", path.display(), e))?;
 
             // [SECURITY REASONING]: Validate file size to prevent memory exhaustion
-            if content.len() > 10_000 {
+            if content.len() > MAX_RUST_TOOLCHAIN_FILE_SIZE {
                 return Err(anyhow!("File {} is too large (>10KB)", path.display()));
             }
 
@@ -368,7 +377,7 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
             .map_err(|e| anyhow!("Failed to read {}: {}", anchor_toml_path.display(), e))?;
 
         // [SECURITY REASONING]: Validate file size to prevent memory exhaustion
-        if content.len() > 100_000 {
+        if content.len() > MAX_TOML_FILE_SIZE {
             return Err(anyhow!(
                 "File {} is too large (>100KB)",
                 anchor_toml_path.display()
@@ -424,7 +433,7 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
             .map_err(|e| anyhow!("Failed to read {}: {}", cargo_toml_path.display(), e))?;
 
         // [SECURITY REASONING]: Validate file size to prevent memory exhaustion
-        if content.len() > 100_000 {
+        if content.len() > MAX_TOML_FILE_SIZE {
             return Err(anyhow!(
                 "File {} is too large (>100KB)",
                 cargo_toml_path.display()
@@ -561,11 +570,11 @@ fn infer_missing_versions(versions: &mut ProjectVersions) -> Result<()> {
         || versions.solana_version.as_ref().is_none_or(|v| v == "*")
     {
         println!("Solana version could not be determined. Suggesting latest.");
-        versions.solana_version = Some(COMPATIBILITY_RULES[0].0.to_string());
+        versions.solana_version = Some(COMPATIBILITY_RULES[LATEST_COMPATIBILITY_INDEX].0.to_string());
     }
     if versions.rust_version.is_none() {
         println!("Rust version could not be determined. Suggesting latest.");
-        versions.rust_version = Some(COMPATIBILITY_RULES[0].2.to_string());
+        versions.rust_version = Some(COMPATIBILITY_RULES[LATEST_COMPATIBILITY_INDEX].2.to_string());
     }
 
     Ok(())
