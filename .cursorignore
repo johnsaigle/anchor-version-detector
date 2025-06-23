@@ -1,0 +1,73 @@
+# 🛡️ Secrets & Credentials
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets.*
+credentials.*
+*.enc
+*.gpg
+*.vault
+*.sqlite
+*.db
+*.db3
+
+# 🧑‍💻 Personal Information
+*.ssh/
+*.gnupg/
+*.npmrc
+*.aws/
+*.azure/
+*.kube/
+*.docker/
+*.history
+*.bash_history
+*.zsh_history
+*.pypirc
+
+# 🔧 Local/System Config Files
+.vscode/
+.idea/
+*.log
+*.pid
+*.swp
+*.DS_Store
+*.cache/
+__pycache__/
+node_modules/
+dist/
+build/
+*.out
+*.tmp
+
+# 🚫 Binaries & Artifacts
+*.exe
+*.dll
+*.so
+*.o
+*.class
+*.pyc
+*.jar
+*.wasm
+*.zip
+*.tar
+*.gz
+*.7z
+
+# 🔬 Tests & Mocks (optional exclusion)
+__snapshots__/
+mock_data/
+test_fixtures/
+*.spec.*
+*.test.*
+
+# 🧪 AI Rule Check Artifacts (opt-in)
+# Uncomment if you store test inserts for rule checking
+# rule_check.log
+# rule_check_result.json
