@@ -15,3 +15,5 @@ If the anchor version isn't found in Anchor.toml, the script should look in Carg
 anchor-lang = "0.29.0"
 anchor-spl = "0.29.0"
 ```
+
+## Resolve any errors raised by clippy
