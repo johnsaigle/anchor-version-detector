@@ -525,14 +525,26 @@ const COMPATIBILITY_RULES: &[(&str, &str, &str)] = &[
     ("1.14.0", "0.26.0", "1.66.0"),
 ];
 
+/// Checks if the directory appears to be a Solana project by looking for Solana-related indicators
+/// Returns true if any Solana or Anchor version information was found
+fn is_solana_project(versions: &ProjectVersions) -> bool {
+    versions.solana_version.is_some() || versions.anchor_version.is_some()
+}
+
 /// Infers missing version information using the compatibility matrix
 /// Uses known working combinations to fill in missing versions
+/// Returns an error if no Solana project indicators are found
 fn infer_missing_versions(versions: &mut ProjectVersions) -> Result<()> {
-    // If Anchor is the only one missing, maybe this isn't an anchor project
-    // match versions {
-    //     Some(_), Some(_), None, Some(_) => return versions,
-    //     _ => continue;
-    // }
+    // [SECURITY INTENT]: Validate that this is actually a Solana project before proceeding
+    // [SECURITY REASONING]: Prevents the tool from providing misleading version information for non-Solana projects
+    if !is_solana_project(versions) {
+        return Err(anyhow!(
+            "This directory does not appear to be a Solana project. No Solana or Anchor version information found.\n\
+            Expected to find one of:\n\
+            - Anchor.toml with toolchain configuration\n\
+            - Cargo.toml with solana-program, anchor-lang, or anchor-spl dependencies"
+        ));
+    }
 
     // If we have Solana version but missing others
     if let Some(solana_ref) = &versions.solana_version {
@@ -570,11 +582,19 @@ fn infer_missing_versions(versions: &mut ProjectVersions) -> Result<()> {
         || versions.solana_version.as_ref().is_none_or(|v| v == "*")
     {
         println!("Solana version could not be determined. Suggesting latest.");
-        versions.solana_version = Some(COMPATIBILITY_RULES[LATEST_COMPATIBILITY_INDEX].0.to_string());
+        versions.solana_version = Some(
+            COMPATIBILITY_RULES[LATEST_COMPATIBILITY_INDEX]
+                .0
+                .to_string(),
+        );
     }
     if versions.rust_version.is_none() {
         println!("Rust version could not be determined. Suggesting latest.");
-        versions.rust_version = Some(COMPATIBILITY_RULES[LATEST_COMPATIBILITY_INDEX].2.to_string());
+        versions.rust_version = Some(
+            COMPATIBILITY_RULES[LATEST_COMPATIBILITY_INDEX]
+                .2
+                .to_string(),
+        );
     }
 
     Ok(())

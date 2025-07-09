@@ -1,11 +1,23 @@
 # TODO
 
-## Return early and give an error if the directory does not look like a Solana project
+## Parsing anchor version should not include `=`
 
-Currently the program will output the default/latest Rust/Agave information when no info can be found.
+```BUG
+Rust version could not be determined. Suggesting latest.
+Detected/Inferred Versions:
+Rust: 1.84.1
+Solana: 2
+Anchor: =0.30.1
 
-Instead, if there is no trace of either a Solana or Anchor version, the code should tell the user 
-that their target doesn't look like a Solana project, then exit
+To work with this project, configure your environment as follows:
+```
+rustup default 1.84.1
+agave-install init 2
+avm use =0.30.1
+```
+ENDBUG```
+
+
 
 ## Enhance detection methods for Anchor version
 If the anchor version isn't found in Anchor.toml, the script should look in Cargo.toml for e.g.
