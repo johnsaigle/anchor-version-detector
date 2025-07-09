@@ -34,6 +34,7 @@ Anchor: 0.29.0
 
 To work with this project, configure your environment as follows:
 rustup default nightly-2023-10-29
+rustup component add rust-analyzer
 agave-install init 1.18.10
 avm use 0.29.0
 ```

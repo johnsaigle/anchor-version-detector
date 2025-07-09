@@ -167,13 +167,14 @@ fn main() -> Result<()> {
     println!("\nTo work with this project, configure your environment as follows:");
     println!("```");
     if let Some(ref toolchain) = versions.rust_version {
-        println!("rustup default {}", toolchain);
+        println!("rustup default {}", clean_version(toolchain));
+        println!("rustup component add rust-analyzer");
     }
     if let Some(ref solana) = versions.solana_version {
-        println!("agave-install init {}", solana);
+        println!("agave-install init {}", clean_version(solana));
     }
     if let Some(ref anchor) = versions.anchor_version {
-        println!("avm use {}", anchor);
+        println!("avm use {}", clean_version(anchor));
     }
     println!("```");
 
