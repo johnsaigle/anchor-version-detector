@@ -22,6 +22,7 @@ strip = "debuginfo"
 incremental = true
 
 [lints.clippy]
+pedantic = "warn"
 # ==== Security-related clippy lints
 arithmetic_side_effects = "warn"
 as_conversions = "warn"

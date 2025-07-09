@@ -206,21 +206,21 @@ impl ProjectVersions {
             || self.anchor_version.is_none()
     }
 
-    /// Updates this instance with version information from another ProjectVersions
+    /// Updates this instance with version information from another `ProjectVersions`
     /// Only updates fields that are currently None
     fn update_from(&mut self, other: &ProjectVersions) {
         if self.rust_version.is_none() && other.rust_version.is_some() {
-            self.rust_version = other.rust_version.clone();
-            self.source = other.source.clone();
+            self.rust_version.clone_from(&other.rust_version);
+            self.source.clone_from(&other.source);
         }
         if self.solana_version.is_none()
             && other.solana_version.is_some()
             && other.solana_version.as_ref().is_none_or(|v| v != "*")
         {
-            self.solana_version = other.solana_version.clone();
+            self.solana_version.clone_from(&other.solana_version);
         }
         if self.anchor_version.is_none() && other.anchor_version.is_some() {
-            self.anchor_version = other.anchor_version.clone();
+            self.anchor_version.clone_from(&other.anchor_version);
         }
     }
 }
@@ -350,7 +350,20 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
         source: None,
     };
 
-    // Check for a rust-toolchain file.
+    // Check for rust-toolchain files
+    check_rust_toolchain_files(project_path, &mut versions)?;
+
+    // Check Anchor.toml
+    check_anchor_toml(project_path, &mut versions)?;
+
+    // Check Cargo.toml
+    check_cargo_toml(project_path, &mut versions)?;
+
+    Ok(versions)
+}
+
+/// Checks for rust-toolchain files and updates version information
+fn check_rust_toolchain_files(project_path: &Path, versions: &mut ProjectVersions) -> Result<()> {
     for filename in RUST_TOOLCHAIN_FILES {
         let path = project_path.join(filename);
         if path.exists() {
@@ -370,114 +383,115 @@ fn detect_versions(project_path: &Path) -> Result<ProjectVersions> {
             break;
         }
     }
+    Ok(())
+}
 
-    // Check Anchor.toml
+/// Checks Anchor.toml file and updates version information
+fn check_anchor_toml(project_path: &Path, versions: &mut ProjectVersions) -> Result<()> {
     let anchor_toml_path = project_path.join("Anchor.toml");
-    if anchor_toml_path.exists() {
-        let content = fs::read_to_string(&anchor_toml_path)
-            .map_err(|e| anyhow!("Failed to read {}: {}", anchor_toml_path.display(), e))?;
+    if !anchor_toml_path.exists() {
+        return Ok(());
+    }
 
-        // [SECURITY REASONING]: Validate file size to prevent memory exhaustion
-        if content.len() > MAX_TOML_FILE_SIZE {
-            return Err(anyhow!(
-                "File {} is too large (>100KB)",
-                anchor_toml_path.display()
-            ));
-        }
+    let content = fs::read_to_string(&anchor_toml_path)
+        .map_err(|e| anyhow!("Failed to read {}: {}", anchor_toml_path.display(), e))?;
 
-        // Try parsing with our structured approach first
-        match toml::from_str::<AnchorToml>(&content) {
-            Ok(config) => {
-                if let Some(toolchain) = config.toolchain {
-                    // Handle solana version
-                    if let Some(solana_ver) = toolchain.solana {
-                        versions.solana_version = Some(solana_ver);
-                    }
+    // [SECURITY REASONING]: Validate file size to prevent memory exhaustion
+    if content.len() > MAX_TOML_FILE_SIZE {
+        return Err(anyhow!(
+            "File {} is too large (>100KB)",
+            anchor_toml_path.display()
+        ));
+    }
 
-                    // Handle anchor version
-                    if let Some(anchor_ver) = toolchain.anchor {
-                        versions.anchor_version = Some(anchor_ver);
-                    }
+    // Try parsing with our structured approach first
+    match toml::from_str::<AnchorToml>(&content) {
+        Ok(config) => {
+            if let Some(toolchain) = config.toolchain {
+                if let Some(solana_ver) = toolchain.solana {
+                    versions.solana_version = Some(solana_ver);
+                }
+                if let Some(anchor_ver) = toolchain.anchor {
+                    versions.anchor_version = Some(anchor_ver);
                 }
             }
-            Err(_) => {
-                // Fallback to parsing as generic TOML
-                if let Ok(value) = toml::from_str::<toml::Value>(&content) {
-                    if let Some(toolchain) = value.get("toolchain").and_then(|t| t.as_table()) {
-                        // Try to get solana version
-                        if versions.solana_version.is_none() {
-                            if let Some(solana_ver) =
-                                toolchain.get("solana_version").and_then(|v| v.as_str())
-                            {
-                                versions.solana_version = Some(solana_ver.to_string());
-                            }
-                        }
+        }
+        Err(_) => {
+            // Fallback to parsing as generic TOML
+            parse_anchor_toml_fallback(&content, versions);
+        }
+    }
+    Ok(())
+}
 
-                        // Try to get anchor version
-                        if versions.anchor_version.is_none() {
-                            if let Some(anchor_ver) =
-                                toolchain.get("anchor_version").and_then(|v| v.as_str())
-                            {
-                                versions.anchor_version = Some(anchor_ver.to_string());
-                            }
-                        }
-                    }
+/// Fallback parsing for Anchor.toml as generic TOML
+fn parse_anchor_toml_fallback(content: &str, versions: &mut ProjectVersions) {
+    if let Ok(value) = toml::from_str::<toml::Value>(content) {
+        if let Some(toolchain) = value.get("toolchain").and_then(|t| t.as_table()) {
+            if versions.solana_version.is_none() {
+                if let Some(solana_ver) = toolchain.get("solana_version").and_then(|v| v.as_str()) {
+                    versions.solana_version = Some(solana_ver.to_string());
+                }
+            }
+            if versions.anchor_version.is_none() {
+                if let Some(anchor_ver) = toolchain.get("anchor_version").and_then(|v| v.as_str()) {
+                    versions.anchor_version = Some(anchor_ver.to_string());
                 }
             }
         }
     }
+}
 
-    // Check Cargo.toml
+/// Checks Cargo.toml file and updates version information
+fn check_cargo_toml(project_path: &Path, versions: &mut ProjectVersions) -> Result<()> {
     let cargo_toml_path = project_path.join("Cargo.toml");
-    if cargo_toml_path.exists() {
-        let content = fs::read_to_string(&cargo_toml_path)
-            .map_err(|e| anyhow!("Failed to read {}: {}", cargo_toml_path.display(), e))?;
+    if !cargo_toml_path.exists() {
+        return Ok(());
+    }
 
-        // [SECURITY REASONING]: Validate file size to prevent memory exhaustion
-        if content.len() > MAX_TOML_FILE_SIZE {
-            return Err(anyhow!(
-                "File {} is too large (>100KB)",
-                cargo_toml_path.display()
-            ));
-        }
+    let content = fs::read_to_string(&cargo_toml_path)
+        .map_err(|e| anyhow!("Failed to read {}: {}", cargo_toml_path.display(), e))?;
 
-        // First try parsing with our structured approach
-        match toml::from_str::<CargoToml>(&content) {
-            Ok(config) => {
-                // Check regular dependencies first
-                if let Some(deps) = &config.dependencies {
-                    update_versions_from_dependencies(&mut versions, deps);
-                }
+    // [SECURITY REASONING]: Validate file size to prevent memory exhaustion
+    if content.len() > MAX_TOML_FILE_SIZE {
+        return Err(anyhow!(
+            "File {} is too large (>100KB)",
+            cargo_toml_path.display()
+        ));
+    }
 
-                // Check workspace dependencies if versions not found in regular dependencies
-                if let Some(workspace) = &config.workspace {
-                    if let Some(workspace_deps) = &workspace.dependencies {
-                        update_versions_from_dependencies(&mut versions, workspace_deps);
-                    }
+    // First try parsing with our structured approach
+    match toml::from_str::<CargoToml>(&content) {
+        Ok(config) => {
+            if let Some(deps) = &config.dependencies {
+                update_versions_from_dependencies(versions, deps);
+            }
+            if let Some(workspace) = &config.workspace {
+                if let Some(workspace_deps) = &workspace.dependencies {
+                    update_versions_from_dependencies(versions, workspace_deps);
                 }
             }
-            Err(_) => {
-                // Fallback to parsing as generic TOML
-                if let Ok(value) = toml::from_str::<toml::Value>(&content) {
-                    // Check regular dependencies first
-                    if let Some(deps) = value.get("dependencies").and_then(|d| d.as_table()) {
-                        update_versions_from_toml_table(&mut versions, deps);
-                    }
+        }
+        Err(_) => {
+            // Fallback to parsing as generic TOML
+            parse_cargo_toml_fallback(&content, versions);
+        }
+    }
+    Ok(())
+}
 
-                    // Check workspace dependencies if versions not found
-                    if let Some(workspace) = value.get("workspace").and_then(|w| w.as_table()) {
-                        if let Some(workspace_deps) =
-                            workspace.get("dependencies").and_then(|d| d.as_table())
-                        {
-                            update_versions_from_toml_table(&mut versions, workspace_deps);
-                        }
-                    }
-                }
+/// Fallback parsing for Cargo.toml as generic TOML
+fn parse_cargo_toml_fallback(content: &str, versions: &mut ProjectVersions) {
+    if let Ok(value) = toml::from_str::<toml::Value>(content) {
+        if let Some(deps) = value.get("dependencies").and_then(|d| d.as_table()) {
+            update_versions_from_toml_table(versions, deps);
+        }
+        if let Some(workspace) = value.get("workspace").and_then(|w| w.as_table()) {
+            if let Some(workspace_deps) = workspace.get("dependencies").and_then(|d| d.as_table()) {
+                update_versions_from_toml_table(versions, workspace_deps);
             }
         }
     }
-
-    Ok(versions)
 }
 
 /// Extracts version string from a TOML value (fallback parsing)
@@ -505,7 +519,7 @@ fn parse_rust_toolchain(content: &str) -> Result<String> {
 
     // Basic validation - check if it looks like a version number
     // This covers formats like "1.69.0" and "nightly-2023-04-01"
-    if version.chars().any(|c| c.is_numeric()) {
+    if version.chars().any(char::is_numeric) {
         Ok(version.to_string())
     } else {
         Err(anyhow!("Invalid rust-toolchain format"))
