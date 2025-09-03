@@ -13,6 +13,7 @@ use anyhow::{Result, anyhow};
 use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// Default message when version cannot be determined
 const UNKNOWN_VERSION: &str = "Unknown";
@@ -64,6 +65,18 @@ struct ProjectVersions {
     anchor_version: Option<String>,
     /// Path to the file where version information was found
     source: Option<PathBuf>,
+}
+
+/// Contains current environment version information
+#[derive(Debug)]
+#[allow(clippy::struct_field_names)]
+struct CurrentEnvironment {
+    /// Current Rust version from rustc --version
+    rust_version: Option<String>,
+    /// Current Solana/Agave version from agave-install -V  
+    solana_version: Option<String>,
+    /// Current Anchor version from avm -V
+    anchor_version: Option<String>,
 }
 
 /// Represents the structure of a `Cargo.toml` file
@@ -160,8 +173,14 @@ fn main() -> Result<()> {
 
     let versions = detect_versions_recursive(&project_path)?;
 
+    // Detect current environment
+    let current_env = detect_current_environment();
+
     println!("Detected/Inferred Versions:");
     print_detected_versions(&versions);
+
+    println!();
+    print_current_environment(&current_env);
 
     // Print configuration instructions
     println!("\nTo work with this project, configure your environment as follows:");
@@ -623,4 +642,81 @@ fn clean_version(version: &str) -> String {
         .trim_start_matches('=')
         .trim_start_matches('v')
         .to_string()
+}
+
+/// Detects the currently installed environment versions
+fn detect_current_environment() -> CurrentEnvironment {
+    CurrentEnvironment {
+        rust_version: get_rustc_version(),
+        solana_version: get_agave_version(),
+        anchor_version: get_avm_version(),
+    }
+}
+
+/// Gets the current Rust version using rustc --version
+fn get_rustc_version() -> Option<String> {
+    match Command::new("rustc").arg("--version").output() {
+        Ok(output) if output.status.success() => {
+            let version_output = String::from_utf8_lossy(&output.stdout);
+            // Parse "rustc 1.76.0 (07dca489a 2024-02-04)" to extract "1.76.0"
+            version_output
+                .split_whitespace()
+                .nth(1)
+                .map(std::string::ToString::to_string)
+        }
+        _ => None,
+    }
+}
+
+/// Gets the current Solana/Agave version using agave-install -V
+fn get_agave_version() -> Option<String> {
+    match Command::new("agave-install").arg("-V").output() {
+        Ok(output) if output.status.success() => {
+            let version_output = String::from_utf8_lossy(&output.stdout);
+            // Parse "agave-install 2.1.0" to extract "2.1.0"
+            version_output
+                .split_whitespace()
+                .nth(1)
+                .map(std::string::ToString::to_string)
+        }
+        _ => None,
+    }
+}
+
+/// Gets the current Anchor version using avm -V  
+fn get_avm_version() -> Option<String> {
+    match Command::new("avm").arg("-V").output() {
+        Ok(output) if output.status.success() => {
+            let version_output = String::from_utf8_lossy(&output.stdout);
+            // Parse "anchor-cli 0.30.1" to extract "0.30.1"
+            version_output
+                .split_whitespace()
+                .nth(1)
+                .map(std::string::ToString::to_string)
+        }
+        _ => None,
+    }
+}
+
+/// Prints the current environment information in a formatted way
+fn print_current_environment(env: &CurrentEnvironment) {
+    println!("Current Environment:");
+    println!(
+        "Rust: {}",
+        env.rust_version
+            .as_deref()
+            .unwrap_or("Not installed/not in PATH")
+    );
+    println!(
+        "Solana: {}",
+        env.solana_version
+            .as_deref()
+            .unwrap_or("Not installed/not in PATH")
+    );
+    println!(
+        "Anchor: {}",
+        env.anchor_version
+            .as_deref()
+            .unwrap_or("Not installed/not in PATH")
+    );
 }
