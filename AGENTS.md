@@ -3,9 +3,9 @@
 ## Build/Test Commands
 - Build: `cargo build` or `cargo build --release`
 - Run: `cargo run <project_directory>`
-- Test: `cargo test` (no specific tests exist yet)
+- Test: `cargo test` (no specific tests exist yet - code is "vibe-coded" per README)
 - Single test: `cargo test <test_name>` (when tests are added)
-- Lint: `cargo clippy` (includes security lints from Cargo.toml)
+- Lint: `cargo clippy` (includes pedantic + security lints: arithmetic_side_effects, as_conversions)
 - Format: `cargo fmt`
 
 ## Code Style & Conventions
@@ -31,3 +31,4 @@
 - Main logic in `src/main.rs` with structured TOML parsing and fallback to generic parsing
 - Uses compatibility matrix (COMPATIBILITY_RULES) for version inference when direct detection fails
 - Skips common build/cache directories (node_modules, target, .git, etc.) for performance
+- Uses Rust edition 2024 with optimized release builds (LTO, overflow checks)
