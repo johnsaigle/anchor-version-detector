@@ -219,7 +219,7 @@ fn detect_versions_recursive(project_path: &Path) -> Result<ProjectVersions> {
 
 impl ProjectVersions {
     /// Returns true if any version information is missing
-    fn needs_more_info(&self) -> bool {
+    const fn needs_more_info(&self) -> bool {
         self.rust_version.is_none()
             || self.solana_version.is_none()
             || self.anchor_version.is_none()
@@ -227,7 +227,7 @@ impl ProjectVersions {
 
     /// Updates this instance with version information from another `ProjectVersions`
     /// Only updates fields that are currently None
-    fn update_from(&mut self, other: &ProjectVersions) {
+    fn update_from(&mut self, other: &Self) {
         if self.rust_version.is_none() && other.rust_version.is_some() {
             self.rust_version.clone_from(&other.rust_version);
             self.source.clone_from(&other.source);
@@ -323,24 +323,21 @@ fn get_version_from_spec(spec: &DependencySpec) -> Option<String> {
 
 /// Update version information from structured Dependencies
 fn update_versions_from_dependencies(versions: &mut ProjectVersions, deps: &Dependencies) {
-    if versions.solana_version.is_none() {
-        if let Some(solana_spec) = &deps.solana_program {
+    if versions.solana_version.is_none()
+        && let Some(solana_spec) = &deps.solana_program {
             versions.solana_version = get_version_from_spec(solana_spec);
         }
-    }
 
-    if versions.anchor_version.is_none() {
-        if let Some(anchor_spec) = &deps.anchor_lang {
+    if versions.anchor_version.is_none()
+        && let Some(anchor_spec) = &deps.anchor_lang {
             versions.anchor_version = get_version_from_spec(anchor_spec);
         }
-    }
 
     // Use anchor-spl as fallback for anchor version
-    if versions.anchor_version.is_none() {
-        if let Some(anchor_spl_spec) = &deps.anchor_spl {
+    if versions.anchor_version.is_none()
+        && let Some(anchor_spl_spec) = &deps.anchor_spl {
             versions.anchor_version = get_version_from_spec(anchor_spl_spec);
         }
-    }
 }
 
 /// Update version information from generic TOML table (fallback parsing)
@@ -445,20 +442,17 @@ fn check_anchor_toml(project_path: &Path, versions: &mut ProjectVersions) -> Res
 
 /// Fallback parsing for Anchor.toml as generic TOML
 fn parse_anchor_toml_fallback(content: &str, versions: &mut ProjectVersions) {
-    if let Ok(value) = toml::from_str::<toml::Value>(content) {
-        if let Some(toolchain) = value.get("toolchain").and_then(|t| t.as_table()) {
-            if versions.solana_version.is_none() {
-                if let Some(solana_ver) = toolchain.get("solana_version").and_then(|v| v.as_str()) {
+    if let Ok(value) = toml::from_str::<toml::Value>(content)
+        && let Some(toolchain) = value.get("toolchain").and_then(|t| t.as_table()) {
+            if versions.solana_version.is_none()
+                && let Some(solana_ver) = toolchain.get("solana_version").and_then(|v| v.as_str()) {
                     versions.solana_version = Some(solana_ver.to_string());
                 }
-            }
-            if versions.anchor_version.is_none() {
-                if let Some(anchor_ver) = toolchain.get("anchor_version").and_then(|v| v.as_str()) {
+            if versions.anchor_version.is_none()
+                && let Some(anchor_ver) = toolchain.get("anchor_version").and_then(|v| v.as_str()) {
                     versions.anchor_version = Some(anchor_ver.to_string());
                 }
-            }
         }
-    }
 }
 
 /// Checks Cargo.toml file and updates version information
@@ -485,11 +479,10 @@ fn check_cargo_toml(project_path: &Path, versions: &mut ProjectVersions) -> Resu
             if let Some(deps) = &config.dependencies {
                 update_versions_from_dependencies(versions, deps);
             }
-            if let Some(workspace) = &config.workspace {
-                if let Some(workspace_deps) = &workspace.dependencies {
+            if let Some(workspace) = &config.workspace
+                && let Some(workspace_deps) = &workspace.dependencies {
                     update_versions_from_dependencies(versions, workspace_deps);
                 }
-            }
         }
         Err(_) => {
             // Fallback to parsing as generic TOML
@@ -505,11 +498,10 @@ fn parse_cargo_toml_fallback(content: &str, versions: &mut ProjectVersions) {
         if let Some(deps) = value.get("dependencies").and_then(|d| d.as_table()) {
             update_versions_from_toml_table(versions, deps);
         }
-        if let Some(workspace) = value.get("workspace").and_then(|w| w.as_table()) {
-            if let Some(workspace_deps) = workspace.get("dependencies").and_then(|d| d.as_table()) {
+        if let Some(workspace) = value.get("workspace").and_then(|w| w.as_table())
+            && let Some(workspace_deps) = workspace.get("dependencies").and_then(|d| d.as_table()) {
                 update_versions_from_toml_table(versions, workspace_deps);
             }
-        }
     }
 }
 
@@ -563,7 +555,7 @@ const COMPATIBILITY_RULES: &[(&str, &str, &str)] = &[
 
 /// Checks if the directory appears to be a Solana project by looking for Solana-related indicators
 /// Returns true if any Solana or Anchor version information was found
-fn is_solana_project(versions: &ProjectVersions) -> bool {
+const fn is_solana_project(versions: &ProjectVersions) -> bool {
     versions.solana_version.is_some() || versions.anchor_version.is_some()
 }
 
