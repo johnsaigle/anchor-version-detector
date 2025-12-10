@@ -1,3 +1,9 @@
 # TODO
 
-## Resolve any errors raised by clippy
+## Resolve errors raised by clippy
+
+## Add basic CI checks
+
+clippy
+
+unit tests
