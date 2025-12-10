@@ -24,7 +24,7 @@ incremental = true
 [lints.clippy]
 pedantic = "warn"
 correctness = "warn"
-performance = "warn"
+perf = "warn"
 nursery = "warn"
 complexity = "warn"
 # ==== Security-related clippy lints
