@@ -22,11 +22,12 @@ strip = "debuginfo"
 incremental = true
 
 [lints.clippy]
-pedantic = "warn"
-correctness = "warn"
-perf = "warn"
-nursery = "warn"
 complexity = "warn"
+correctness = "warn"
+nursery = "warn"
+pedantic = "warn"
+perf = "warn"
+suspicious = "warn"
 # ==== Security-related clippy lints
 arithmetic_side_effects = "warn"
 as_conversions = "warn"
