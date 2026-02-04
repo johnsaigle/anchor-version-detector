@@ -9,7 +9,7 @@
 //! When versions cannot be directly detected, the tool uses a compatibility matrix
 //! to infer missing versions based on known working combinations.
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -313,31 +313,74 @@ fn print_detected_versions(versions: &ProjectVersions) {
     );
 }
 
+/// Parses a semver range string and extracts the most specific version
+/// Examples:
+/// - ">=1.18,<=2" -> "1.18"
+/// - ">=1.18.0,<=2.0.0" -> "1.18.0"
+/// - "^1.18" -> "1.18"
+/// - "1.18.17" -> "1.18.17"
+///
+/// [SECURITY INTENT]: Safely parse version strings without executing arbitrary code
+/// [SECURITY REASONING]: Uses simple string parsing to extract version components
+fn parse_semver_range(version_str: &str) -> String {
+    // Handle common semver range formats
+    let version_str = version_str.trim();
+
+    // If it contains a comma (range like ">=1.18,<=2"), extract the lower bound
+    if let Some(comma_pos) = version_str.find(',') {
+        let first_part = &version_str[..comma_pos];
+        // Remove operators like >=, >, =
+        return first_part
+            .trim_start_matches(">=")
+            .trim_start_matches('>')
+            .trim_start_matches('=')
+            .trim()
+            .to_string();
+    }
+
+    // Handle single constraints like ">=1.18" or "^1.18" or "~1.18"
+    version_str
+        .trim_start_matches(">=")
+        .trim_start_matches('>')
+        .trim_start_matches('<')
+        .trim_start_matches("<=")
+        .trim_start_matches('^')
+        .trim_start_matches('~')
+        .trim_start_matches('=')
+        .trim()
+        .to_string()
+}
+
 /// Extracts version string from a dependency specification
 fn get_version_from_spec(spec: &DependencySpec) -> Option<String> {
     match spec {
-        DependencySpec::Simple(version) => Some(version.clone()),
-        DependencySpec::Detailed(details) => details.version.clone(),
+        DependencySpec::Simple(version) => Some(parse_semver_range(version)),
+        DependencySpec::Detailed(details) => {
+            details.version.as_ref().map(|v| parse_semver_range(v))
+        }
     }
 }
 
 /// Update version information from structured Dependencies
 fn update_versions_from_dependencies(versions: &mut ProjectVersions, deps: &Dependencies) {
     if versions.solana_version.is_none()
-        && let Some(solana_spec) = &deps.solana_program {
-            versions.solana_version = get_version_from_spec(solana_spec);
-        }
+        && let Some(solana_spec) = &deps.solana_program
+    {
+        versions.solana_version = get_version_from_spec(solana_spec);
+    }
 
     if versions.anchor_version.is_none()
-        && let Some(anchor_spec) = &deps.anchor_lang {
-            versions.anchor_version = get_version_from_spec(anchor_spec);
-        }
+        && let Some(anchor_spec) = &deps.anchor_lang
+    {
+        versions.anchor_version = get_version_from_spec(anchor_spec);
+    }
 
     // Use anchor-spl as fallback for anchor version
     if versions.anchor_version.is_none()
-        && let Some(anchor_spl_spec) = &deps.anchor_spl {
-            versions.anchor_version = get_version_from_spec(anchor_spl_spec);
-        }
+        && let Some(anchor_spl_spec) = &deps.anchor_spl
+    {
+        versions.anchor_version = get_version_from_spec(anchor_spl_spec);
+    }
 }
 
 /// Update version information from generic TOML table (fallback parsing)
@@ -443,16 +486,19 @@ fn check_anchor_toml(project_path: &Path, versions: &mut ProjectVersions) -> Res
 /// Fallback parsing for Anchor.toml as generic TOML
 fn parse_anchor_toml_fallback(content: &str, versions: &mut ProjectVersions) {
     if let Ok(value) = toml::from_str::<toml::Value>(content)
-        && let Some(toolchain) = value.get("toolchain").and_then(|t| t.as_table()) {
-            if versions.solana_version.is_none()
-                && let Some(solana_ver) = toolchain.get("solana_version").and_then(|v| v.as_str()) {
-                    versions.solana_version = Some(solana_ver.to_string());
-                }
-            if versions.anchor_version.is_none()
-                && let Some(anchor_ver) = toolchain.get("anchor_version").and_then(|v| v.as_str()) {
-                    versions.anchor_version = Some(anchor_ver.to_string());
-                }
+        && let Some(toolchain) = value.get("toolchain").and_then(|t| t.as_table())
+    {
+        if versions.solana_version.is_none()
+            && let Some(solana_ver) = toolchain.get("solana_version").and_then(|v| v.as_str())
+        {
+            versions.solana_version = Some(solana_ver.to_string());
         }
+        if versions.anchor_version.is_none()
+            && let Some(anchor_ver) = toolchain.get("anchor_version").and_then(|v| v.as_str())
+        {
+            versions.anchor_version = Some(anchor_ver.to_string());
+        }
+    }
 }
 
 /// Checks Cargo.toml file and updates version information
@@ -480,9 +526,10 @@ fn check_cargo_toml(project_path: &Path, versions: &mut ProjectVersions) -> Resu
                 update_versions_from_dependencies(versions, deps);
             }
             if let Some(workspace) = &config.workspace
-                && let Some(workspace_deps) = &workspace.dependencies {
-                    update_versions_from_dependencies(versions, workspace_deps);
-                }
+                && let Some(workspace_deps) = &workspace.dependencies
+            {
+                update_versions_from_dependencies(versions, workspace_deps);
+            }
         }
         Err(_) => {
             // Fallback to parsing as generic TOML
@@ -499,22 +546,23 @@ fn parse_cargo_toml_fallback(content: &str, versions: &mut ProjectVersions) {
             update_versions_from_toml_table(versions, deps);
         }
         if let Some(workspace) = value.get("workspace").and_then(|w| w.as_table())
-            && let Some(workspace_deps) = workspace.get("dependencies").and_then(|d| d.as_table()) {
-                update_versions_from_toml_table(versions, workspace_deps);
-            }
+            && let Some(workspace_deps) = workspace.get("dependencies").and_then(|d| d.as_table())
+        {
+            update_versions_from_toml_table(versions, workspace_deps);
+        }
     }
 }
 
 /// Extracts version string from a TOML value (fallback parsing)
 fn extract_version_from_toml_value(value: Option<&toml::Value>) -> Option<String> {
-    match value {
-        Some(v) => match v {
-            toml::Value::String(s) => Some(s.clone()),
-            toml::Value::Table(t) => t.get("version").and_then(|v| v.as_str()).map(String::from),
-            _ => None,
-        },
-        None => None,
-    }
+    value.and_then(|v| match v {
+        toml::Value::String(s) => Some(parse_semver_range(s)),
+        toml::Value::Table(t) => t
+            .get("version")
+            .and_then(|v| v.as_str())
+            .map(parse_semver_range),
+        _ => None,
+    })
 }
 
 /// Parses rust-toolchain file content to extract version information
@@ -713,4 +761,108 @@ fn print_current_environment(env: &CurrentEnvironment) {
             .as_deref()
             .unwrap_or("Not installed/not in PATH")
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_semver_range_with_comma_range() {
+        // Test case from issue #3: ">=1.18,<=2" should parse to "1.18"
+        assert_eq!(parse_semver_range(">=1.18,<=2"), "1.18");
+    }
+
+    #[test]
+    fn test_parse_semver_range_with_full_version_range() {
+        assert_eq!(parse_semver_range(">=1.18.0,<=2.0.0"), "1.18.0");
+    }
+
+    #[test]
+    fn test_parse_semver_range_with_greater_than_or_equal() {
+        assert_eq!(parse_semver_range(">=1.18"), "1.18");
+        assert_eq!(parse_semver_range(">=1.18.17"), "1.18.17");
+    }
+
+    #[test]
+    fn test_parse_semver_range_with_caret() {
+        assert_eq!(parse_semver_range("^1.18"), "1.18");
+        assert_eq!(parse_semver_range("^1.18.17"), "1.18.17");
+    }
+
+    #[test]
+    fn test_parse_semver_range_with_tilde() {
+        assert_eq!(parse_semver_range("~1.18"), "1.18");
+        assert_eq!(parse_semver_range("~1.18.17"), "1.18.17");
+    }
+
+    #[test]
+    fn test_parse_semver_range_exact_version() {
+        assert_eq!(parse_semver_range("1.18.17"), "1.18.17");
+        assert_eq!(parse_semver_range("0.30.1"), "0.30.1");
+    }
+
+    #[test]
+    fn test_parse_semver_range_with_equals() {
+        assert_eq!(parse_semver_range("=1.18.17"), "1.18.17");
+    }
+
+    #[test]
+    fn test_parse_semver_range_with_whitespace() {
+        assert_eq!(parse_semver_range("  >=1.18  "), "1.18");
+        assert_eq!(parse_semver_range("  >=1.18 , <=2  "), "1.18");
+    }
+
+    #[test]
+    fn test_parse_semver_range_complex_range() {
+        // Multiple constraints - should extract the lower bound
+        assert_eq!(parse_semver_range(">1.17,<2.0"), "1.17");
+        assert_eq!(parse_semver_range(">=1.18.0,<2.0.0"), "1.18.0");
+    }
+
+    #[test]
+    fn test_get_version_from_spec_simple() {
+        let spec = DependencySpec::Simple(">=1.18,<=2".to_string());
+        assert_eq!(get_version_from_spec(&spec), Some("1.18".to_string()));
+    }
+
+    #[test]
+    fn test_get_version_from_spec_detailed() {
+        let mut other = std::collections::HashMap::new();
+        other.insert("features".to_string(), toml::Value::Array(vec![]));
+
+        let spec = DependencySpec::Detailed(DetailedDependency {
+            version: Some(">=1.18,<=2".to_string()),
+            _other: other,
+        });
+        assert_eq!(get_version_from_spec(&spec), Some("1.18".to_string()));
+    }
+
+    #[test]
+    fn test_extract_version_from_toml_value_string() {
+        let value = toml::Value::String(">=1.18,<=2".to_string());
+        assert_eq!(
+            extract_version_from_toml_value(Some(&value)),
+            Some("1.18".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_version_from_toml_value_table() {
+        let mut table = toml::map::Map::new();
+        table.insert(
+            "version".to_string(),
+            toml::Value::String(">=1.18,<=2".to_string()),
+        );
+        let value = toml::Value::Table(table);
+        assert_eq!(
+            extract_version_from_toml_value(Some(&value)),
+            Some("1.18".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_version_from_toml_value_none() {
+        assert_eq!(extract_version_from_toml_value(None), None);
+    }
 }
