@@ -590,6 +590,7 @@ fn parse_rust_toolchain(content: &str) -> Result<String> {
 /// Ordered from newest to oldest for proper version inference
 const COMPATIBILITY_RULES: &[(&str, &str, &str)] = &[
     // (Solana, Anchor, Rust) - Newest to oldest
+    ("3.1.10", "1.0.0", "1.89.0"), // https://www.anchor-lang.com/docs/updates/release-notes/1-0-0, https://github.com/solana-foundation/anchor/blob/v1.0.0/cli/src/rust_template.rs#L21
     ("3.0.6", "0.32.1", "1.89.0"), // same as 0.32.0 -- minor bug fix release
     ("3.0.6", "0.32.0", "1.89.0"), // justification: https://github.com/johnsaigle/anchor-version-detector/issues/2
     ("2.1.0", "0.31.0", "1.84.1"), // based on rust-toolchain in main agave repo and https://www.anchor-lang.com/release-notes/0.31.0
