@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -92,7 +92,7 @@ fn search_subdirectories(
         .map_err(|error| anyhow!("Failed to read directory {}: {}", dir.display(), error))?;
 
     for entry in entries {
-        let entry = entry.map_err(|error| anyhow!("Failed to read directory entry: {}", error))?;
+        let entry = entry.map_err(|error| anyhow!("Failed to read directory entry: {error}"))?;
         let path = entry.path();
         if !path.is_dir() {
             continue;
