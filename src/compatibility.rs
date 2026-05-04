@@ -7,6 +7,21 @@ use crate::types::{
 };
 
 const COMPATIBILITY_RULES: [CompatibilityRule; 10] = [
+    // Anchor > v1
+    CompatibilityRule {
+        solana: "3.1.10",
+        anchor: "1.0.2",
+        rust: "1.89.0",
+        notes: "Anchor 1.0.0 compatibility from the v1.0.0 release notes and Rust template.",
+        source: "https://www.anchor-lang.com/docs/updates/release-notes/1-0-0",
+    },
+    CompatibilityRule {
+        solana: "3.1.10",
+        anchor: "1.0.1",
+        rust: "1.89.0",
+        notes: "Anchor 1.0.0 compatibility from the v1.0.0 release notes and Rust template.",
+        source: "https://www.anchor-lang.com/docs/updates/release-notes/1-0-0",
+    },
     CompatibilityRule {
         solana: "3.1.10",
         anchor: "1.0.0",
@@ -14,6 +29,7 @@ const COMPATIBILITY_RULES: [CompatibilityRule; 10] = [
         notes: "Anchor 1.0.0 compatibility from the v1.0.0 release notes and Rust template.",
         source: "https://www.anchor-lang.com/docs/updates/release-notes/1-0-0",
     },
+    // Anchor < v1
     CompatibilityRule {
         solana: "3.0.6",
         anchor: "0.32.1",
