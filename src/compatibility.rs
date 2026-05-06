@@ -6,7 +6,7 @@ use crate::types::{
     ProjectVersions,
 };
 
-const COMPATIBILITY_RULES: [CompatibilityRule; 10] = [
+const COMPATIBILITY_RULES: [CompatibilityRule; 12] = [
     // Anchor > v1
     CompatibilityRule {
         solana: "3.1.10",
