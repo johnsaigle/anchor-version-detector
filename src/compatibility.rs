@@ -6,8 +6,36 @@ use crate::types::{
     ProjectVersions,
 };
 
-const COMPATIBILITY_RULES: [CompatibilityRule; 12] = [
+const COMPATIBILITY_RULES: [CompatibilityRule; 17] = [
     // Anchor > v1
+    CompatibilityRule {
+        solana: "3.1.10",
+        anchor: "1.1.2",
+        rust: "1.89.0",
+        notes: "Anchor 1.1.2 toolchain example lists Solana 3.1.10; Rust template MSRV remains 1.89.0.",
+        source: "https://github.com/otter-sec/anchor/blob/v1.1.2/docs/content/docs/references/anchor-toml.mdx",
+    },
+    CompatibilityRule {
+        solana: "3.1.10",
+        anchor: "1.1.1",
+        rust: "1.89.0",
+        notes: "Anchor 1.1.1 toolchain example lists Solana 3.1.10; Rust template MSRV remains 1.89.0.",
+        source: "https://github.com/otter-sec/anchor/blob/v1.1.1/docs/content/docs/references/anchor-toml.mdx",
+    },
+    CompatibilityRule {
+        solana: "3.1.10",
+        anchor: "1.1.0",
+        rust: "1.89.0",
+        notes: "Anchor 1.1.0 toolchain example lists Solana 3.1.10; Rust template MSRV remains 1.89.0.",
+        source: "https://github.com/solana-foundation/anchor/blob/v1.1.0/docs/content/docs/references/anchor-toml.mdx",
+    },
+    CompatibilityRule {
+        solana: "3.1.10",
+        anchor: "1.0.3",
+        rust: "1.89.0",
+        notes: "Patch release aligned with Anchor 1.0.x Solana 3.1.10 compatibility and Rust template MSRV 1.89.0.",
+        source: "https://github.com/otter-sec/anchor/blob/v1.0.3/docs/content/docs/updates/release-notes/1-0-3.mdx",
+    },
     CompatibilityRule {
         solana: "3.1.10",
         anchor: "1.0.2",
@@ -31,18 +59,25 @@ const COMPATIBILITY_RULES: [CompatibilityRule; 12] = [
     },
     // Anchor < v1
     CompatibilityRule {
-        solana: "3.0.6",
+        solana: "2.3.0",
         anchor: "0.32.1",
         rust: "1.89.0",
-        notes: "Minor bug-fix release aligned with Anchor 0.32.0 toolchain expectations.",
-        source: "https://github.com/johnsaigle/anchor-version-detector/issues/2",
+        notes: "Anchor 0.32.1 release notes list Solana 2.3.0; Rust MSRV remains 1.89.0 from 0.32.0.",
+        source: "https://github.com/otter-sec/anchor/blob/v0.32.1/docs/content/docs/updates/release-notes/0-32-1.mdx",
     },
     CompatibilityRule {
-        solana: "3.0.6",
+        solana: "2.3.0",
         anchor: "0.32.0",
         rust: "1.89.0",
-        notes: "Anchor 0.32.0 compatibility inferred from release notes and Agave toolchain state.",
-        source: "https://github.com/johnsaigle/anchor-version-detector/issues/2",
+        notes: "Anchor 0.32.0 release notes list Solana 2.3.0 and Rust 1.89.0 MSRV.",
+        source: "https://github.com/otter-sec/anchor/blob/v0.32.0/docs/content/docs/updates/release-notes/0-32-0.mdx",
+    },
+    CompatibilityRule {
+        solana: "2.1.0",
+        anchor: "0.31.1",
+        rust: "1.84.1",
+        notes: "Patch release states the recommended Solana version is unchanged from 0.31.0.",
+        source: "https://github.com/otter-sec/anchor/blob/v0.31.1/docs/content/docs/updates/release-notes/0-31-1.mdx",
     },
     CompatibilityRule {
         solana: "2.1.0",
@@ -240,9 +275,9 @@ mod tests {
 
     #[test]
     fn test_find_rule_by_anchor() {
-        let rule = find_rule_by_anchor("^0.30.1").unwrap();
-        assert_eq!(rule.solana, "1.18.17");
-        assert_eq!(rule.rust, "1.76.0");
+        let rule = find_rule_by_anchor("^1.1.2").unwrap();
+        assert_eq!(rule.solana, "3.1.10");
+        assert_eq!(rule.rust, "1.89.0");
     }
 
     #[test]
@@ -279,5 +314,19 @@ mod tests {
         );
         assert_eq!(assessment.reason, CompatibilityReason::FallbackLatestKnown);
         assert_eq!(warnings.len(), 2);
+    }
+
+    #[test]
+    fn test_patch_release_inherits_previous_minor_compatibility() {
+        let rule = find_rule_by_anchor("0.31.1").unwrap();
+        assert_eq!(rule.solana, "2.1.0");
+        assert_eq!(rule.rust, "1.84.1");
+    }
+
+    #[test]
+    fn test_corrected_anchor_032_compatibility() {
+        let rule = find_rule_by_anchor("0.32.1").unwrap();
+        assert_eq!(rule.solana, "2.3.0");
+        assert_eq!(rule.rust, "1.89.0");
     }
 }
