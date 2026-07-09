@@ -1,0 +1,23 @@
+name: Scan Anchor Releases
+
+on:
+  schedule:
+    - cron: '0 12 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    name: Check for uncovered Anchor releases
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan releases and create issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash ./sh/check-anchor-releases.sh
