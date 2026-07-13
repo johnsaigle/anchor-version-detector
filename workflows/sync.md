@@ -35,7 +35,11 @@ Find Anchor releases that are not represented in the tool, determine their suppo
 
 3. Filter to actionable releases.
 
-   Exclude pre-releases, release candidates, yanked tags, and versions without enough evidence to infer Solana/Agave and Rust compatibility. If a release is skipped, record the exact reason in the final summary.
+   Exclude pre-releases, release candidates, yanked tags, and versions without enough evidence to infer Solana/Agave and Rust compatibility.
+
+   Exclude Anchor versions older than `MINIMUM_ANCHOR_VERSION` (defined in `src/compatibility.rs`). These are deliberately unsupported and should never be reported as missing. Only report a version as missing if it is **newer** than or equal to the minimum version floor.
+
+   If a release is skipped, record the exact reason in the final summary.
 
 4. Determine compatibility for each missing release.
 

@@ -6,7 +6,7 @@ pub mod types;
 
 pub use compatibility::{
     assess_versions, compatibility_rules, find_rule_by_anchor, find_rule_by_solana,
-    latest_compatible_rule, resolve_versions,
+    latest_compatible_rule, minimum_anchor_version, resolve_versions, MINIMUM_ANCHOR_VERSION,
 };
 pub use detect::{detect_versions_in_dir, detect_versions_recursive};
 pub use env::{detect_current_environment, get_agave_version, get_avm_version, get_rustc_version};
