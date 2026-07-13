@@ -130,6 +130,13 @@ const COMPATIBILITY_RULES: [CompatibilityRule; 17] = [
     },
 ];
 
+pub const MINIMUM_ANCHOR_VERSION: &str = "0.26.0";
+
+#[must_use]
+pub const fn minimum_anchor_version() -> &'static str {
+    MINIMUM_ANCHOR_VERSION
+}
+
 #[must_use]
 pub const fn compatibility_rules() -> &'static [CompatibilityRule] {
     &COMPATIBILITY_RULES
