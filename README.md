@@ -1,5 +1,16 @@
 ## Anchor Version Detector
 
+> [!WARNING]
+> **This tool is deprecated.**
+>
+> Most developers now work with AI agents that can detect and resolve version
+> compatibility between packages (Rust, Solana, Anchor, and their dependencies)
+> directly within a project. On top of that, OtterSec's stewardship of Anchor
+> has made compatible version combinations easier to find and document.
+>
+> This repository is kept for historical reference only and will not receive
+> further updates.
+
 A Rust library and CLI for detecting and resolving compatible Rust, Solana/Agave, and Anchor versions from Solana project files.
 
 The crate is now library-first: other tools can depend on it directly and consume structured compatibility data instead of scraping CLI output.
